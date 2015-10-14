@@ -103,25 +103,26 @@ public class ImageManager : NSObject, NSURLSessionDownloadDelegate, NSURLSession
                 self.doSuccess(hash, data: d)
                 }, failure: { (Void) in
                     //lastly fetch from the network asynchronously
+                    let ident = self.createBackgroundIdent()
+                    let config = NSURLSessionConfiguration.backgroundSessionConfigurationWithIdentifier(ident)
+                    let session = NSURLSession(configuration: config, delegate: self, delegateQueue: nil)
+                    session.downloadTaskWithRequest(NSURLRequest(URL: NSURL(string: url)!), completionHandler: { (data: NSURL?, response: NSURLResponse?, error: NSError?)  in
+                        if let err = error {
+                            dispatch_async(dispatch_get_main_queue(), {
+                                self.doFailure(hash, error: err)
+                            })
+                        } else {
+                            self.cache.add(hash, url: data!)
+                            dispatch_async(dispatch_get_main_queue(), {
+                                if let d = self.cache.fromMemory(hash) {
+                                    self.doSuccess(hash, data: d)
+                                }
+                            })
+                        }
+
+                    })
                     
-                    self.fetchFromNetwork(url, progress: { (status: Double) in
-                        dispatch_async(dispatch_get_main_queue(), {
-                            self.doProgress(hash, status: status)
-                        })
-                        }, completionHandler: { () in
-                            if let err = response.error {
-                                dispatch_async(dispatch_get_main_queue(), {
-                                    self.doFailure(hash, error: err)
-                                })
-                            } else {
-                                self.cache.add(hash, url: response.responseObject! as! NSURL)
-                                dispatch_async(dispatch_get_main_queue(), {
-                                    if let d = self.cache.fromMemory(hash) {
-                                        self.doSuccess(hash, data: d)
-                                    }
-                                })
-                            }
-                        })
+                    
             })
         } else if var array = self.pending[hash] {
             array.append(BlockHolder(progress: progress, success: success, failure: failure))
@@ -177,11 +178,12 @@ public class ImageManager : NSObject, NSURLSessionDownloadDelegate, NSURLSession
     private func hash(u: String) -> String {
         var url = u
         let len = url.characters.count-1
-        if url[advance(url.startIndex,len)] == "/" {
-            url = url[url.startIndex..<advance(url.startIndex,len)]
+        
+        if url[url.startIndex.advancedBy(len)] == "/" {
+            url = url[url.startIndex..<url.startIndex.advancedBy(len)]
         }
         var hash: UInt32 = 0
-        for (index, codeUnit) in enumerate(url.utf8) {
+        for (index, codeUnit) in (url.utf8.enumerate()) {
             hash += (UInt32(codeUnit) * UInt32(index))
             hash ^= (hash >> 6)
         }
@@ -203,20 +205,12 @@ public class ImageManager : NSObject, NSURLSessionDownloadDelegate, NSURLSession
         var str = ""
         for var i = 0; i < 14; i++ {
             let start = Int(arc4random() % 14)
-            str.append(letters[advance(letters.startIndex,start)])
+            str.append(letters[letters.startIndex.advancedBy(start)])
         }
         return "com.vluxe.skeets.request.\(str)"
     }
     
-    /// fetches the image url from the network.
-    private func fetchFromNetwork(url: String, progress:((Double) -> Void)!, completionHandler:(() -> Void)!) -> NSURLSessionDownloadTask? {
-        let ident = createBackgroundIdent()
-        let config = NSURLSessionConfiguration.backgroundSessionConfigurationWithIdentifier(ident)
-        let session = NSURLSession(configuration: config, delegate: self, delegateQueue: nil)
-        let task = session.downloadTaskWithRequest(NSURLRequest(URL: NSURL(string: url)!))
-        task.resume()
-        return task
-    }
+
     
     //MARK: Methods for background downloads
     
