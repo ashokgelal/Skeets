@@ -103,10 +103,13 @@ public class ImageManager : NSObject, NSURLSessionDownloadDelegate, NSURLSession
                 self.doSuccess(hash, data: d)
                 }, failure: { (Void) in
                     //lastly fetch from the network asynchronously
-                    let ident = self.createBackgroundIdent()
-                    let config = NSURLSessionConfiguration.backgroundSessionConfigurationWithIdentifier(ident)
-                    let session = NSURLSession(configuration: config, delegate: self, delegateQueue: nil)
-                    self.download(session, url: url, hash: hash)
+                    dispatch_sync(dispatch_get_main_queue(), {
+                        let ident = self.createBackgroundIdent()
+                        let config = NSURLSessionConfiguration.backgroundSessionConfigurationWithIdentifier(ident)
+                        let session = NSURLSession(configuration: config, delegate: self, delegateQueue: nil)
+                        self.download(session, url: url, hash: hash)
+                    })
+                   
                     
                     
                     
