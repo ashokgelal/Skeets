@@ -106,21 +106,8 @@ public class ImageManager : NSObject, NSURLSessionDownloadDelegate, NSURLSession
                     let ident = self.createBackgroundIdent()
                     let config = NSURLSessionConfiguration.backgroundSessionConfigurationWithIdentifier(ident)
                     let session = NSURLSession(configuration: config, delegate: self, delegateQueue: nil)
-                    session.downloadTaskWithRequest(NSURLRequest(URL: NSURL(string: url)!), completionHandler: { (data: NSURL?, response: NSURLResponse?, error: NSError?)  in
-                        if let err = error {
-                            dispatch_async(dispatch_get_main_queue(), {
-                                self.doFailure(hash, error: err)
-                            })
-                        } else {
-                            self.cache.add(hash, url: data!)
-                            dispatch_async(dispatch_get_main_queue(), {
-                                if let d = self.cache.fromMemory(hash) {
-                                    self.doSuccess(hash, data: d)
-                                }
-                            })
-                        }
-
-                    })
+                    self.download(session, url: url, hash: hash)
+                    
                     
                     
             })
@@ -129,7 +116,30 @@ public class ImageManager : NSObject, NSURLSessionDownloadDelegate, NSURLSession
             self.pending[hash] = array
         }
     }
-    
+    public func download(session: NSURLSession, url: String,  hash: String){
+        do{
+            try session.downloadTaskWithRequest(NSURLRequest(URL: NSURL(string: url)!), completionHandler: { (data: NSURL?, response: NSURLResponse?, error: NSError?)  in
+                if let err = error {
+                    dispatch_async(dispatch_get_main_queue(), {
+                        self.doFailure(hash, error: err)
+                    })
+                } else {
+                    self.cache.add(hash, url: data!)
+                    dispatch_async(dispatch_get_main_queue(), {
+                        if let d = self.cache.fromMemory(hash) {
+                            self.doSuccess(hash, data: d)
+                        }
+                    })
+                }
+                
+            })
+        }catch let err as NSError{
+            dispatch_async(dispatch_get_main_queue(), {
+                self.doFailure(hash, error: err)
+            })
+        }
+
+    }
     ///cancel the request, by simply removing the closures
     public func cancel(url: String) {
         let hash = self.hash(url)
