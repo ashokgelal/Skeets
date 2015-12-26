@@ -34,12 +34,12 @@ public class SKImageView : ImageView {
     private func fetchImageURL(imageURL: String) {
         ImageManager.fetch(imageURL,
             progress: { (status: Double) in
-                print("updating some UI for this: \(status)") //useful if you have some kind of progress dialog as the image loads
+                Swift.print("updating some UI for this: \(status)") //useful if you have some kind of progress dialog as the image loads
             },success: { (data: NSData) in
-                print("got an image!")
+                Swift.print("got an image!")
                 self.image = Image(data: data) //set the image data
             }, failure: { (error: NSError) in
-                print("failed to get an image: \(error)")
+                Swift.print("failed to get an image: \(error)")
         })
     }
 }
